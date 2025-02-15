@@ -1,5 +1,5 @@
 import { createNext } from 'e2e-utils'
-import { NextInstance } from 'test/lib/next-modes/base'
+import { NextInstance } from 'e2e-utils'
 import { renderViaHTTP } from 'next-test-utils'
 describe('next/jest', () => {
   let next: NextInstance
@@ -17,16 +17,17 @@ describe('next/jest', () => {
         })`,
         'jest.config.js': `module.exports = require('next/jest')({ dir: './' })()`,
         'next.config.js': `module.exports = {
-          experimental: { transpilePackages: ['@hashicorp/platform-util'] },
+          transpilePackages: ['@hashicorp/platform-util'],
         }`,
       },
       packageJson: {
         scripts: {
           // Runs jest and bails if jest fails
-          build: 'next build && yarn jest',
+          build: 'next build && jest',
         },
       },
-      buildCommand: `yarn build`,
+      installCommand: 'pnpm i',
+      buildCommand: `pnpm build`,
       dependencies: {
         '@hashicorp/platform-util': '0.2.0',
         '@types/react': 'latest',

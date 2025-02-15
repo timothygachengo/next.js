@@ -3,13 +3,34 @@
 import { join } from 'path'
 import webdriver from 'next-webdriver'
 import { createNext, FileRef } from 'e2e-utils'
-import { check, getRedboxHeader, hasRedbox, waitFor } from 'next-test-utils'
-import { NextInstance } from 'test/lib/next-modes/base'
+import {
+  assertHasRedbox,
+  assertNoRedbox,
+  check,
+  getRedboxHeader,
+} from 'next-test-utils'
+import { NextInstance } from 'e2e-utils'
+
+// TODO(new-dev-overlay): Remove this once old dev overlay fork is removed
+const isNewDevOverlay =
+  process.env.__NEXT_EXPERIMENTAL_NEW_DEV_OVERLAY === 'true'
 
 const installCheckVisible = (browser) => {
-  return browser.eval(`(function() {
-    window.checkInterval = setInterval(function() {
-      let watcherDiv = document.querySelector('#__next-build-watcher')
+  if (isNewDevOverlay) {
+    return browser.eval(`(function() {
+      window.checkInterval = setInterval(function() {
+      const root = document.querySelector('nextjs-portal').shadowRoot;
+      const indicator = root.querySelector('[data-next-mark]')
+      window.showedBuilder = window.showedBuilder || (
+        indicator.getAttribute('data-next-mark-loading') === 'true'
+      )
+      if (window.showedBuilder) clearInterval(window.checkInterval)
+    }, 50)
+  })()`)
+  } else {
+    return browser.eval(`(function() {
+      window.checkInterval = setInterval(function() {
+      let watcherDiv = document.querySelector('#__next-build-indicator')
       watcherDiv = watcherDiv.shadowRoot || watcherDiv
       window.showedBuilder = window.showedBuilder || (
         watcherDiv.querySelector('div').className.indexOf('visible') > -1
@@ -17,6 +38,7 @@ const installCheckVisible = (browser) => {
       if (window.showedBuilder) clearInterval(window.checkInterval)
     }, 50)
   })()`)
+  }
 }
 
 describe('GS(S)P Server-Side Change Reloading', () => {
@@ -271,13 +293,13 @@ describe('GS(S)P Server-Side Change Reloading', () => {
 
     try {
       await next.patchFile(page, originalContent.replace('props:', 'propss:'))
-      expect(await hasRedbox(browser, true)).toBe(true)
+      await assertHasRedbox(browser)
       expect(await getRedboxHeader(browser)).toContain(
         'Additional keys were returned from'
       )
 
       await next.patchFile(page, originalContent)
-      expect(await hasRedbox(browser, false)).toBe(false)
+      await assertNoRedbox(browser)
     } finally {
       await next.patchFile(page, originalContent)
     }
@@ -301,11 +323,11 @@ describe('GS(S)P Server-Side Change Reloading', () => {
           'throw new Error("custom oops"); const count'
         )
       )
-      expect(await hasRedbox(browser, true)).toBe(true)
+      await assertHasRedbox(browser)
       expect(await getRedboxHeader(browser)).toContain('custom oops')
 
       await next.patchFile(page, originalContent)
-      expect(await hasRedbox(browser, false)).toBe(false)
+      await assertNoRedbox(browser)
     } finally {
       await next.patchFile(page, originalContent)
     }
@@ -318,10 +340,6 @@ describe('GS(S)P Server-Side Change Reloading', () => {
     const props = JSON.parse(await browser.elementByCss('#props').text())
     expect(props.count).toBe(1)
     expect(props.data).toEqual({ hello: 'world' })
-
-    // wait longer than the max inactive age for on-demand entries
-    // to ensure we aren't incorrectly disposing the active entry
-    await waitFor(20 * 1000)
 
     const page = 'lib/data.json'
     const originalContent = await next.readFile(page)
