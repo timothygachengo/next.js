@@ -3,9 +3,10 @@ import fs from 'fs-extra'
 import cheerio from 'cheerio'
 import { join } from 'path'
 import { createNext, FileRef } from 'e2e-utils'
-import { NextInstance } from 'test/lib/next-modes/base'
+import { NextInstance } from 'e2e-utils'
 import {
   check,
+  createNowRouteMatches,
   fetchViaHTTP,
   findPort,
   initNextServerScript,
@@ -14,16 +15,18 @@ import {
   waitFor,
 } from 'next-test-utils'
 import nodeFetch from 'node-fetch'
+import { ChildProcess } from 'child_process'
 
-describe('should set-up next', () => {
+describe('required server files i18n', () => {
   let next: NextInstance
-  let server
-  let appPort
+  let server: ChildProcess
+  let appPort: number | string
   let errors = []
   let requiredFilesManifest
 
   beforeAll(async () => {
     let wasmPkgIsAvailable = false
+    process.env.NEXT_PRIVATE_TEST_HEADERS = '1'
 
     const res = await nodeFetch(
       `https://registry.npmjs.com/@next/swc-wasm-nodejs/-/swc-wasm-nodejs-${
@@ -48,11 +51,12 @@ describe('should set-up next', () => {
       packageJson: {
         scripts: {
           build: wasmPkgIsAvailable
-            ? 'rm -rfv node_modules/@next/swc && yarn next build'
-            : 'yarn next build',
+            ? 'rm -rfv node_modules/@next/swc && next build'
+            : 'next build',
         },
       },
-      buildCommand: 'yarn build',
+      installCommand: 'pnpm i',
+      buildCommand: 'pnpm build',
       nextConfig: {
         i18n: {
           locales: ['en', 'fr'],
@@ -105,30 +109,31 @@ describe('should set-up next', () => {
     const testServer = join(next.testDir, 'standalone/server.js')
     await fs.writeFile(
       testServer,
-      (await fs.readFile(testServer, 'utf8'))
-        .replace('console.error(err)', `console.error('top-level', err)`)
-        .replace('conf:', 'minimalMode: true,conf:')
+      (await fs.readFile(testServer, 'utf8')).replace(
+        'port:',
+        'minimalMode: true,port:'
+      )
     )
     appPort = await findPort()
     server = await initNextServerScript(
       testServer,
-      /Listening on/,
+      /- Local:/,
       {
         ...process.env,
-        PORT: appPort,
+        PORT: `${appPort}`,
       },
       undefined,
       {
         cwd: next.testDir,
         onStderr(msg) {
-          if (msg.includes('top-level')) {
-            errors.push(msg)
-          }
+          errors.push(msg)
         },
       }
     )
   })
+
   afterAll(async () => {
+    delete process.env.NEXT_PRIVATE_TEST_HEADERS
     await next.destroy()
     if (server) await killApp(server)
   })
@@ -313,7 +318,7 @@ describe('should set-up next', () => {
   it('should render dynamic SSR page correctly with x-matched-path', async () => {
     const html = await renderViaHTTP(
       appPort,
-      '/some-other-path?slug=first',
+      '/some-other-path?nxtPslug=first',
       undefined,
       {
         headers: {
@@ -330,7 +335,7 @@ describe('should set-up next', () => {
 
     const html2 = await renderViaHTTP(
       appPort,
-      '/some-other-path?slug=second',
+      '/some-other-path?nxtPslug=second',
       undefined,
       {
         headers: {
@@ -346,12 +351,16 @@ describe('should set-up next', () => {
     expect(isNaN(data2.random)).toBe(false)
     expect(data2.random).not.toBe(data.random)
 
-    const html3 = await renderViaHTTP(appPort, '/some-other-path', undefined, {
-      headers: {
-        'x-matched-path': '/dynamic/[slug]?slug=%5Bslug%5D.json',
-        'x-now-route-matches': '1=second&slug=second',
-      },
-    })
+    const html3 = await renderViaHTTP(
+      appPort,
+      '/some-other-path?nxtPslug=second',
+      undefined,
+      {
+        headers: {
+          'x-matched-path': '/dynamic/[slug]?slug=%5Bslug%5D.json',
+        },
+      }
+    )
     const $3 = cheerio.load(html3)
     const data3 = JSON.parse($3('#props').text())
 
@@ -365,7 +374,9 @@ describe('should set-up next', () => {
     const html = await renderViaHTTP(appPort, '/fallback/first', undefined, {
       headers: {
         'x-matched-path': '/fallback/first',
-        'x-now-route-matches': '1=first',
+        'x-now-route-matches': createNowRouteMatches({
+          slug: 'first',
+        }).toString(),
       },
     })
     const $ = cheerio.load(html)
@@ -378,7 +389,9 @@ describe('should set-up next', () => {
     const html2 = await renderViaHTTP(appPort, `/fallback/[slug]`, undefined, {
       headers: {
         'x-matched-path': '/fallback/[slug]',
-        'x-now-route-matches': '1=second',
+        'x-now-route-matches': createNowRouteMatches({
+          slug: 'second',
+        }).toString(),
       },
     })
     const $2 = cheerio.load(html2)
@@ -393,7 +406,9 @@ describe('should set-up next', () => {
   it('should return data correctly with x-matched-path', async () => {
     const res = await fetchViaHTTP(
       appPort,
-      `/_next/data/${next.buildId}/en/dynamic/first.json?slug=first`,
+      `/_next/data/${next.buildId}/en/dynamic/first.json?${createNowRouteMatches(
+        { slug: 'first' }
+      ).toString()}`,
       undefined,
       {
         headers: {
@@ -414,7 +429,9 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': `/_next/data/${next.buildId}/en/fallback/[slug].json`,
-          'x-now-route-matches': '1=second',
+          'x-now-route-matches': createNowRouteMatches({
+            slug: 'second',
+          }).toString(),
         },
       }
     )
@@ -451,7 +468,9 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': '/catch-all/[[...rest]]',
-          'x-now-route-matches': '1=hello&catchAll=hello',
+          'x-now-route-matches': createNowRouteMatches({
+            rest: 'hello',
+          }).toString(),
         },
       }
     )
@@ -470,7 +489,9 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': '/catch-all/[[...rest]]',
-          'x-now-route-matches': '1=hello/world&catchAll=hello/world',
+          'x-now-route-matches': createNowRouteMatches({
+            rest: 'hello/world',
+          }).toString(),
         },
       }
     )
@@ -507,7 +528,9 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': `/_next/data/${next.buildId}/en/catch-all/[[...rest]].json`,
-          'x-now-route-matches': '1=hello&rest=hello',
+          'x-now-route-matches': createNowRouteMatches({
+            rest: 'hello',
+          }).toString(),
         },
       }
     )
@@ -524,7 +547,9 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': `/_next/data/${next.buildId}/en/catch-all/[[...rest]].json`,
-          'x-now-route-matches': '1=hello/world&rest=hello/world',
+          'x-now-route-matches': createNowRouteMatches({
+            rest: 'hello/world',
+          }).toString(),
         },
       }
     )
@@ -577,7 +602,11 @@ describe('should set-up next', () => {
     const res = await fetchViaHTTP(
       appPort,
       '/to-dynamic/%c0.%c0.',
-      '?path=%c0.%c0.',
+      Object.fromEntries(
+        createNowRouteMatches({
+          path: '%c0.%c0.',
+        })
+      ),
       {
         headers: {
           'x-matched-path': '/dynamic/[slug]',
@@ -589,35 +618,41 @@ describe('should set-up next', () => {
   })
 
   it('should bubble error correctly for gip page', async () => {
-    errors = []
     const res = await fetchViaHTTP(appPort, '/errors/gip', { crash: '1' })
     expect(res.status).toBe(500)
-    expect(await res.text()).toBe('internal server error')
+    expect(await res.text()).toBe('Internal Server Error')
 
     await check(
-      () => (errors[0].includes('gip hit an oops') ? 'success' : errors[0]),
+      () =>
+        errors.join('').includes('gip hit an oops')
+          ? 'success'
+          : errors.join('\n'),
       'success'
     )
   })
 
   it('should bubble error correctly for gssp page', async () => {
-    errors = []
     const res = await fetchViaHTTP(appPort, '/errors/gssp', { crash: '1' })
     expect(res.status).toBe(500)
-    expect(await res.text()).toBe('internal server error')
+    expect(await res.text()).toBe('Internal Server Error')
     await check(
-      () => (errors[0].includes('gssp hit an oops') ? 'success' : errors[0]),
+      () =>
+        errors.join('\n').includes('gssp hit an oops')
+          ? 'success'
+          : errors.join('\n'),
       'success'
     )
   })
 
   it('should bubble error correctly for gsp page', async () => {
-    errors = []
     const res = await fetchViaHTTP(appPort, '/errors/gsp/crash')
     expect(res.status).toBe(500)
-    expect(await res.text()).toBe('internal server error')
+    expect(await res.text()).toBe('Internal Server Error')
     await check(
-      () => (errors[0].includes('gsp hit an oops') ? 'success' : errors[0]),
+      () =>
+        errors.join('\n').includes('gsp hit an oops')
+          ? 'success'
+          : errors.join('\n'),
       'success'
     )
   })
@@ -626,12 +661,12 @@ describe('should set-up next', () => {
     errors = []
     const res = await fetchViaHTTP(appPort, '/api/error')
     expect(res.status).toBe(500)
-    expect(await res.text()).toBe('internal server error')
+    expect(await res.text()).toBe('Internal Server Error')
     await check(
       () =>
-        errors[0].includes('some error from /api/error')
+        errors.join('\n').includes('some error from /api/error')
           ? 'success'
-          : errors[0],
+          : errors.join('\n'),
       'success'
     )
   })
@@ -640,7 +675,16 @@ describe('should set-up next', () => {
     const res = await fetchViaHTTP(
       appPort,
       '/optional-ssp',
-      { rest: '', another: 'value' },
+      Object.fromEntries(
+        createNowRouteMatches(
+          {
+            rest: '',
+          },
+          {
+            another: 'value',
+          }
+        )
+      ),
       {
         headers: {
           'x-matched-path': '/optional-ssp/[[...rest]]',
@@ -663,7 +707,12 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': '/en/optional-ssg/[[...rest]]',
-          'x-now-route-matches': 'nextLocale=en&1=en',
+          'x-now-route-matches': createNowRouteMatches(
+            {},
+            {
+              nextLocale: 'en',
+            }
+          ).toString(),
         },
       }
     )
@@ -682,7 +731,10 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': '/en/[slug]/social/[[...rest]]',
-          'x-now-route-matches': 'nextLocale=en&1=en&2=user-123&slug=user-123',
+          'x-now-route-matches': createNowRouteMatches(
+            { slug: 'user-123' },
+            { nextLocale: 'en' }
+          ).toString(),
         },
       }
     )
@@ -704,8 +756,7 @@ describe('should set-up next', () => {
       {
         headers: {
           'x-matched-path': '/optional-ssg/[[...rest]]',
-          'x-now-route-matches':
-            '1=en%2Fes%2Fhello%252Fworld&rest=en%2Fes%2Fhello%252Fworld',
+          'x-now-route-matches': 'nxtPrest=en%2Fes%2Fhello%252Fworld',
         },
       }
     )
@@ -722,7 +773,16 @@ describe('should set-up next', () => {
     const res = await fetchViaHTTP(
       appPort,
       '/api/optional',
-      { rest: '', another: 'value' },
+      Object.fromEntries(
+        createNowRouteMatches(
+          {
+            rest: '',
+          },
+          {
+            another: 'value',
+          }
+        )
+      ),
       {
         headers: {
           'x-matched-path': '/api/optional/[[...rest]]',
@@ -765,7 +825,14 @@ describe('should set-up next', () => {
     const res = await fetchViaHTTP(appPort, '/en/fallback/[slug]', undefined, {
       headers: {
         'x-matched-path': '/en/fallback/[slug]',
-        'x-now-route-matches': '2=another&slug=another&1=en&nextLocale=en',
+        'x-now-route-matches': createNowRouteMatches(
+          {
+            slug: 'another',
+          },
+          {
+            nextLocale: 'en',
+          }
+        ).toString(),
       },
       redirect: 'manual',
     })
@@ -783,7 +850,14 @@ describe('should set-up next', () => {
     const res = await fetchViaHTTP(appPort, '/fr/fallback/[slug]', undefined, {
       headers: {
         'x-matched-path': '/fr/fallback/[slug]',
-        'x-now-route-matches': '2=another&slug=another&1=fr&nextLocale=fr',
+        'x-now-route-matches': createNowRouteMatches(
+          {
+            slug: 'another',
+          },
+          {
+            nextLocale: 'fr',
+          }
+        ).toString(),
       },
       redirect: 'manual',
     })

@@ -18,6 +18,14 @@
     "host-hostess",
     "invalid",
     "remains",
-    "white"
+    "special",
+    "white",
+    "deno",
+    "digitalocean",
+    "flightcontrol",
+    "fly.io",
+    "github",
+    "railway",
+    "sst"
   ]
 }

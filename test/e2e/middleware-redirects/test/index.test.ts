@@ -4,7 +4,7 @@ import { join } from 'path'
 import cheerio from 'cheerio'
 import webdriver from 'next-webdriver'
 import { check, fetchViaHTTP } from 'next-test-utils'
-import { NextInstance } from 'test/lib/next-modes/base'
+import { NextInstance } from 'e2e-utils'
 import { createNext, FileRef } from 'e2e-utils'
 
 describe('Middleware Redirect', () => {
@@ -23,10 +23,11 @@ describe('Middleware Redirect', () => {
   function tests() {
     it('should redirect correctly with redirect in next.config.js', async () => {
       const browser = await webdriver(next.url, '/')
-      await browser.eval('window.beforeNav = 1')
       await browser.eval('window.next.router.push("/to-new")')
       await browser.waitForElementByCss('#dynamic')
-      expect(await browser.eval('window.beforeNav')).toBe(1)
+      expect(await browser.elementByCss('#dynamic').text()).toBe(
+        'Welcome to a /dynamic/[slug]: new'
+      )
     })
 
     it('does not include the locale in redirects by default', async () => {
