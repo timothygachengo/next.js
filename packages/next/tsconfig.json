@@ -2,13 +2,16 @@
   "extends": "../../tsconfig-tsec.json",
   "compilerOptions": {
     "strict": true,
-    "module": "esnext",
-    "target": "ES2017",
+    "stripInternal": true,
     "esModuleInterop": true,
-    "moduleResolution": "node",
-    "jsx": "react",
-    "stripInternal": true
+    "verbatimModuleSyntax": true,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "target": "ES2018",
+    "moduleResolution": "node"
   },
+  // When changing `exclude`, also update
+  // `tsconfig.build.json`.
   "exclude": [
     "dist",
     "./*.d.ts",
@@ -16,6 +19,9 @@
     "image-types/global.d.ts",
     "compat/*.d.ts",
     "legacy/*.d.ts",
-    "types/compiled.d.ts"
+    "types/compiled.d.ts",
+    "navigation-types/*.d.ts",
+    "navigation-types/compat/*.d.ts",
+    "experimental/**/*.d.ts"
   ]
 }

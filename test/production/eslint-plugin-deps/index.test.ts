@@ -1,5 +1,5 @@
 import { createNext } from 'e2e-utils'
-import { NextInstance } from 'test/lib/next-modes/base'
+import { NextInstance } from 'e2e-utils'
 import { renderViaHTTP } from 'next-test-utils'
 
 describe('eslint plugin deps', () => {
@@ -84,19 +84,58 @@ describe('eslint plugin deps', () => {
   }
 }
         `,
+        'tsconfig.json': `{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    // The rule @typescript-eslint/no-unnecessary-boolean-literal-compare requires the \`strictNullChecks\` compiler option to be turned on to function correctly.
+    "strictNullChecks": true,
+    "noEmit": true,
+    "incremental": true,
+    "module": "esnext",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+  ]
+}
+        `,
       },
       dependencies: {
         // Manually installed @typescript-eslint/eslint-plugin, expect to be deduped
-        '@typescript-eslint/eslint-plugin': '^5.16.0',
-        '@typescript-eslint/parser': '^5.16.0',
-        'eslint-config-prettier': '^8.5.0',
-        'eslint-plugin-import': '^2.25.4',
-        'eslint-plugin-react': '^7.29.4',
-        '@types/node': '17.0.23',
-        '@types/react': '17.0.43',
-        '@types/react-dom': '17.0.14',
-        eslint: '^8.12.0',
-        'eslint-config-next': '^12.1.1',
+        '@typescript-eslint/eslint-plugin': 'latest',
+        '@typescript-eslint/parser': 'latest',
+        'eslint-config-prettier': 'latest',
+        'eslint-plugin-import': 'latest',
+        'eslint-plugin-react': 'latest',
+        '@types/node': 'latest',
+        '@types/react': 'latest',
+        '@types/react-dom': 'latest',
+        // Use minimum peer dep version instead of v9 of eslint to avoid breaking changes
+        eslint: '8.56.0',
+        'eslint-config-next': 'latest',
         typescript: 'latest',
       },
       packageJson: {
@@ -104,7 +143,7 @@ describe('eslint plugin deps', () => {
           build: 'next build --no-lint && next lint',
         },
       },
-      buildCommand: 'yarn build',
+      buildCommand: 'pnpm build',
     })
   })
   afterAll(() => next.destroy())

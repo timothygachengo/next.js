@@ -15,8 +15,24 @@ const Page = () => {
       <Image
         priority
         id="basic-image-with-crossorigin"
-        crossOrigin="anonymous"
-        src="/test.jpg"
+        crossOrigin="use-credentials"
+        src="/test.gif"
+        width="400"
+        height="400"
+      ></Image>
+      <Image
+        priority
+        id="basic-image-with-referrerpolicy"
+        referrerPolicy="no-referrer"
+        src="/test.png"
+        width="400"
+        height="400"
+      ></Image>
+      <Image
+        priority
+        id="basic-image-with-referrerpolicy"
+        referrerPolicy="no-referrer"
+        src="/test.png"
         width="400"
         height="400"
       ></Image>
@@ -44,6 +60,15 @@ const Page = () => {
         layout="responsive"
       />
       <p id="stubtext">This is the priority page</p>
+      <div style={{ height: '1000vh' }} />
+      <Image
+        priority
+        id="belowthefold"
+        src="/test.tiff"
+        width="400"
+        height="400"
+        alt=""
+      />
     </div>
   )
 }
