@@ -1,5 +1,5 @@
 import { createNext, FileRef } from 'e2e-utils'
-import { NextInstance } from 'test/lib/next-modes/base'
+import { NextInstance } from 'e2e-utils'
 import { join } from 'path'
 import { BrowserInterface } from '../../lib/browsers/base'
 import webdriver from 'next-webdriver'
@@ -22,7 +22,7 @@ describe('app-dir-prefetch-non-iso-url', () => {
     let browser: BrowserInterface
 
     try {
-      browser = await webdriver(next.appPort, '/')
+      browser = await webdriver(next.url, '/')
       await browser.elementByCss('#to-iso').click()
       await check(() => browser.elementByCss('#page').text(), '/[slug]')
     } finally {
@@ -36,7 +36,7 @@ describe('app-dir-prefetch-non-iso-url', () => {
     let browser: BrowserInterface
 
     try {
-      browser = await webdriver(next.appPort, '/')
+      browser = await webdriver(next.url, '/')
       await browser.elementByCss('#to-non-iso').click()
       await check(() => browser.elementByCss('#page').text(), '/[slug]')
     } finally {

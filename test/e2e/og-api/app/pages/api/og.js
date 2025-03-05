@@ -1,8 +1,8 @@
 // /pages/api/og.jsx
-import { ImageResponse } from '@vercel/og'
+import { ImageResponse } from 'next/og'
 
 export const config = {
-  runtime: 'experimental-edge',
+  runtime: 'edge',
 }
 
 export default function () {

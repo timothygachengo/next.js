@@ -1,6 +1,6 @@
 # Example app with Storybook
 
-This example shows a default set up of Storybook using [storybook-addon-next](https://github.com/RyanClementsHax/storybook-addon-next). Included in this example are stories that demonstrate the ability to use Next.js features in Storybook.
+This example shows a default set up of Storybook using [`@storybook/nextjs`](https://www.npmjs.com/package/@storybook/nextjs). Included in this example are stories that demonstrate the ability to use Next.js features in Storybook.
 
 ### TypeScript
 
@@ -10,7 +10,7 @@ As of v6.0, Storybook has built-in TypeScript support, so no configuration is ne
 
 Deploy the example using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=next-example) or preview live with [StackBlitz](https://stackblitz.com/github/vercel/next.js/tree/canary/examples/with-storybook)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/vercel/next.js/tree/canary/examples/with-storybook&project-name=with-storybook&repository-name=with-storybook)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vercel/next.js/tree/canary/examples/with-storybook&project-name=with-storybook&repository-name=with-storybook)
 
 ## How to use
 
@@ -34,6 +34,8 @@ pnpm create next-app --example with-storybook with-storybook-app
 npm run storybook
 # or
 yarn storybook
+# or
+pnpm storybook
 ```
 
 ### Build Static Storybook
@@ -42,6 +44,8 @@ yarn storybook
 npm run build-storybook
 # or
 yarn build-storybook
+# or
+pnpm build-storybook
 ```
 
 You can use [Vercel](https://vercel.com/new?utm_source=github&utm_medium=readme&utm_campaign=next-example) to deploy Storybook. Specify `storybook-static` as the output directory.
